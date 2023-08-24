@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "59361698308",
+    "firebase_url": "https://project-schoolbo-1597491385360.firebaseio.com",
+    "project_id": "project-schoolbo-1597491385360",
+    "storage_bucket": "project-schoolbo-1597491385360.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:59361698308:android:880fed3e965ccee20e0b51",
+        "android_client_info": {
+          "package_name": "com.correct.hustle.app.correct_hustle"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "59361698308-2k6m0ea7a1r5g5l8nv4l0huj93jnuvha.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFV8_bYMe_SUbS8-TGoXoqqlHjy1fV_7I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "59361698308-2k6m0ea7a1r5g5l8nv4l0huj93jnuvha.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "59361698308-ag42uk3bqrdkgv88r43l80p9pkhcg82o.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.correct.hustle.app.correctHustle"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
