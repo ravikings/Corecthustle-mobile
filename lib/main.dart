@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:bot_toast/bot_toast.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 
 
@@ -34,6 +35,10 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   await getIt<ILocalStorageService>().init();
+
+  Permission.camera.request();
+  Permission.microphone.request();
+  Permission.storage.request();
 
   
   FirebaseMessaging messaging = FirebaseMessaging.instance;

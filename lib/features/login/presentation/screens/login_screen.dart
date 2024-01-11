@@ -3,11 +3,13 @@
 
 import 'package:auto_route/auto_route.dart';
 import 'package:correct_hustle/core/constants/constants.dart';
+import 'package:correct_hustle/core/data/models/user_model.dart';
 import 'package:correct_hustle/core/interactions/alert.dart';
 import 'package:correct_hustle/core/locator.dart';
 import 'package:correct_hustle/core/routes/routes.dart';
 import 'package:correct_hustle/core/routes/routes.gr.dart';
 import 'package:correct_hustle/core/services/local_storage/i_local_storage_service.dart';
+import 'package:correct_hustle/core/state/user_profile_provider.dart';
 import 'package:correct_hustle/core/styles/input_style.dart';
 import 'package:correct_hustle/core/utils/extensions.dart';
 import 'package:correct_hustle/core/utils/functions.dart';
@@ -16,6 +18,7 @@ import 'package:dio/dio.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
 
 @RoutePage()
 class LoginScreen extends StatefulWidget {
@@ -59,7 +62,8 @@ class _LoginScreenState extends State<LoginScreen> {
       });
       
       final token = res.data['data']['token'];
-      
+
+      print(res.data['data']['user']);
 
       await getIt<Dio>().put("user/update-fcm", data: {
         "token": fcmToken
@@ -71,15 +75,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
       ToastAlert.closeAlert();
       // ToastAlert.showAlert("Login successful");
-
-      // print("LoginResponse ::: ${res.data['data']['user']}");
-
       final emailVerified = res.data['data']['user']['email_verified_at'] != null;
 
       if (emailVerified) {
+        final user = UserModel.fromJson(res.data['data']['user']);
         await getIt<ILocalStorageService>().setItem(userDataBox, userTokenKey, token);
+        await getIt<ILocalStorageService>().setItem(userDataBox, userIDKey, user.id);
+
         showSuccessAlert(context, message: "Login Successful.", onOkay: () {
-          getIt<AppRouter>().replace(AppRoute(url: "http://pallytopit.com.ng?token=$token&hst_footer=false"));
+          getIt<AppRouter>().replace(AppRoute(url: "$appUrl?token=$token&hst_footer=false"));
         });
       } else {
         showSuccessAlert(context, message: "Please verify your account to continue.", onOkay: () {
@@ -198,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             alignment: Alignment.centerRight,
                             child: InkWell(
                               onTap: () {
-                                context.router.push(AppRoute(url: "https://pallytopit.com.ng/auth/password/reset?from_app=true", canExitFreely: true));
+                                context.router.push(AppRoute(url: "$appUrl/auth/password/reset?from_app=true", canExitFreely: true));
                               },
                               child: const Text("Forgot password", style: TextStyle(
                                 color: Color(0xFF2D55F9)

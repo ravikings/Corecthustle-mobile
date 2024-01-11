@@ -11,12 +11,14 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 @RoutePage()
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   void navigate() async {
+    _audioPermission();
     final fcmToken = await FirebaseMessaging.instance.getToken();
     print('FCM TOKEN ::: $fcmToken');
     final firstTime = await getIt<ILocalStorageService>().getItem(appDataBox, firstTimeKey, defaultValue: true);
@@ -25,11 +27,20 @@ class SplashScreen extends StatelessWidget {
     } else {
       final token = await getIt<ILocalStorageService>().getItem(userDataBox, userTokenKey, defaultValue: null);
       if (token != null) {
-        getIt<AppRouter>().replace(AppRoute(url: "http://pallytopit.com.ng?token=$token&hst_footer=false"));
+        getIt<AppRouter>().replace(AppBaseRoute(
+          children: [
+            AppRoute(url: "$appUrl?token=$token&hst_footer=false")
+            // ChatBaseRoute()
+          ]
+        ));
       } else {
         getIt<AppRouter>().replace(const LoginRoute());
       }
     }
+  }
+
+  void _audioPermission() async {
+    // await [Permission.storage, Permission.microphone].request();
   }
 
   @override

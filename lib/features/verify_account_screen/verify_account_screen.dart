@@ -48,16 +48,19 @@ class _VerifyAccountScreenState extends State<VerifyAccountScreen> {
       ToastAlert.showLoadingAlert("");
       String? fcmToken = await getIt<ILocalStorageService>().getItem(appDataBox, pushNotificationKey, defaultValue: null);
       fcmToken ??= await FirebaseMessaging.instance.getToken();
-      await getIt<Dio>().post("verify", data: {
+      final res = await getIt<Dio>().post("verify", data: {
         "email": widget.email,
         "token": tokenController.text,
       });
+
+      print("VerifyAccount ::: Response ::: ${res.data}");
 
       ToastAlert.closeAlert();
       // ToastAlert.showAlert("Login successful");
 
       showSuccessAlert(context, message: "Account verified successfully", onOkay: () {
-        getIt<AppRouter>().replaceAll([AppRoute(url: "http://pallytopit.com.ng?token=${widget.token}&hst_footer=false")]);
+        getIt<AppRouter>().replaceAll([LoginRoute()]);
+        // getIt<AppRouter>().replaceAll([AppRoute(url: "http://pallytopit.com.ng?token=${widget.token}&hst_footer=false")]);
       });
 
       // print(token);

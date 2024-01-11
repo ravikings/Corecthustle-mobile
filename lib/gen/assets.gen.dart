@@ -11,6 +11,16 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/services.dart';
 
+class $AssetsImagesGen {
+  const $AssetsImagesGen();
+
+  /// File path: assets/images/wave.png
+  AssetGenImage get wave => const AssetGenImage('assets/images/wave.png');
+
+  /// List of all assets
+  List<AssetGenImage> get values => [wave];
+}
+
 class $AssetsSvgsGen {
   const $AssetsSvgsGen();
 
@@ -72,6 +82,7 @@ class $AssetsSvgsGen {
 class Assets {
   Assets._();
 
+  static const $AssetsImagesGen images = $AssetsImagesGen();
   static const $AssetsSvgsGen svgs = $AssetsSvgsGen();
 }
 

@@ -111,7 +111,7 @@ class ToastAlert {
     BotToast.showLoading();
   }
 
-  static showConfirmAlert(BuildContext context, String message, Function onOkay) {
+  static showConfirmAlert(BuildContext context, String message) {
 
     return showDialog(
       // backgroundColor: Colors.transparent,
@@ -141,7 +141,6 @@ class ToastAlert {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context, true);
-              onOkay();
             },
             style: ButtonStyle(
                 padding: MaterialStateProperty.all(const EdgeInsets.fromLTRB(22, 10, 22, 10)),

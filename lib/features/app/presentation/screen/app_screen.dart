@@ -10,12 +10,16 @@ import 'package:correct_hustle/core/locator.dart';
 import 'package:correct_hustle/core/routes/routes.dart';
 import 'package:correct_hustle/core/routes/routes.gr.dart';
 import 'package:correct_hustle/core/services/local_storage/i_local_storage_service.dart';
+import 'package:correct_hustle/core/styles/colors.dart';
+import 'package:correct_hustle/core/utils/extensions.dart';
 import 'package:correct_hustle/gen/assets.gen.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fl_webview/fl_webview.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 
 @RoutePage()
@@ -67,6 +71,21 @@ class _AppScreenState extends State<AppScreen> {
       });
       return false;
     }
+    if (url.contains("/inbox")) {
+      final seperate = url.split("/");
+      if (seperate.last == "inbox") {
+        getIt<AppRouter>().push(const ChatBaseRoute());
+      } else {
+        getIt<AppRouter>().push(ChatBaseRoute(
+          children: [
+            const ChatListRoute(),
+            ChatMessageBaseRoute(userId: seperate.last)
+          ]
+        ));
+      }
+      setLoading(false);
+      return false;
+    }
 
     if (url.contains("/auth/register")) {
       getIt<ILocalStorageService>().removeItem(userDataBox, userTokenKey).then((value) {
@@ -113,8 +132,14 @@ class _AppScreenState extends State<AppScreen> {
       rethrow;
     }
   }
-
   
+  int currentPage = 0;
+
+  void setCurrentPage(int page) {
+    setState(() {
+      currentPage = page;
+    });
+  }
 
 
   @override
@@ -132,12 +157,12 @@ class _AppScreenState extends State<AppScreen> {
             if (controller != null) {
               final canGoBack = await controller!.canGoBack();
               print("CanGobank ::: $canGoBack");
-              if (canGoBack!) {
+              if (canGoBack == true) {
                 setLoading(true);
                 controller!.goBack();
                 res = false;
               } else {
-                res = await ToastAlert.showConfirmAlert(context, "Do you want to quit the app?", () {});
+                res = await ToastAlert.showConfirmAlert(context, "Do you want to quit the app?");
               }
             }
             return res;
@@ -151,18 +176,25 @@ class _AppScreenState extends State<AppScreen> {
           child: Stack(
             children: [
               FlWebView(
+                // progressBar: FlProgressBar(
+                //   color: Colors.red,
+                //   height: 10
+                // ),
                 webSettings: WebSettings(
                   javascriptMode: JavascriptMode.unrestricted,
                   allowsAutoMediaPlayback: true,
                   allowsInlineMediaPlayback: true,
                 ),
                 load: LoadUrlRequest(widget.url),
+                
                 delegate: FlWebViewDelegate(
                   onPageStarted: (controller, url) {
                     setLoading(true);
                     _wrapTryCatch(() => _listenToUrlChanges(url!));
                   },
-                  onProgress: (controller, progress) => setLoading(progress != 100),
+                  onProgress: (controller, progress) {
+                    setLoading(progress != 100);
+                  },
                   onPageFinished: (controller, url) => setLoading(false),
                   onShowFileChooser: (controller, params) async {
                     print('onShowFileChooser : ${params.toMap()}');
@@ -190,14 +222,37 @@ class _AppScreenState extends State<AppScreen> {
                   onWebResourceError: (controller, error) {
                     setErrorMessage(true, error.description);
                   },
+                  onPermissionRequest: (_, resources) {
+                    // controller.applyWebSettings
+                    // print("Resource Requested ::: $resources");
+                    // Permission.microphone.request();
+                    return true;
+                  },
+                  onPermissionRequestCanceled: (_, resources) {
+                    print("CancelledPermission ::: $resources");
+                  },
                 ),
-                onWebViewCreated: (ctr) => setState(() {
-                  controller = ctr;
-                }),
+                onWebViewCreated: (ctr) async {
+                  String userAgentString = 'userAgentString';
+                  final value = await ctr.getNavigatorUserAgent();
+                  // print('navigator.userAgent :  $value');
+                  userAgentString = '$value = $userAgentString';
+                  final userAgent = await ctr.setUserAgent(userAgentString);
+                  // print('set userAgent:  $userAgent');
+                  // onWebViewCreated?.call(controller);
+                  setState(() {
+                    controller = ctr;
+                  });
+                },
               ),
               if (_loading)
-                const Positioned.fill(
-                  child: BrowserLoading(),
+                const Positioned(
+                  left: 0, right: 0, top: 0,
+                  child: LinearProgressIndicator(
+                    minHeight: 10,
+                    color: primaryColor,
+                  ),
+                  // child: BrowserLoading(),
                 ),
               if (_errorOccurred)
                 Positioned.fill(
@@ -208,6 +263,117 @@ class _AppScreenState extends State<AppScreen> {
                     )
                   ),
                 ),
+
+              Positioned(
+                left: 0, right: 0, bottom: 0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(.5),
+                    borderRadius: BorderRadius.circular(16)
+                  ),
+                  padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      InkWell(
+                        onTap: () async {
+                          setCurrentPage(0);
+                          final token = await getIt<ILocalStorageService>().getItem(userDataBox, userTokenKey, defaultValue: null);
+                          controller!.loadUrl(LoadUrlRequest("$appUrl?token=$token&hst_footer=false"));
+                        },
+                        child: BottomNavItem(
+                          label: "Home", icon: Icons.home,
+                          isActive: currentPage == 0,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () {
+                          context.router.push(ChatBaseRoute());
+                        },
+                        child: BottomNavItem(
+                          label: "Inbox", icon: Icons.mail_rounded
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context, 
+                            isDismissible: true,
+                            enableDrag: true,
+                            isScrollControlled: true,
+                            builder: (context) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.only(
+                                    topRight: Radius.circular(20),
+                                    topLeft: Radius.circular(20),
+                                  )
+                                ),
+                                padding: EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text("Explore", style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: primaryColor, fontSize: 18.sp
+                                    ),),
+                                    16.toColumSpace(),
+
+                                    GestureDetector(
+                                      onTap: () {
+                                        setCurrentPage(2);
+                                        setLoading(true);
+                                        Navigator.pop(context);
+                                        controller!.loadUrl(LoadUrlRequest("https://pallytopit.com.ng/search"));
+                                      },
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 12),
+                                        child: Text("Explore Gigs")
+                                      ),
+                                    ),
+                                    2.toColumSpace(),
+                                    GestureDetector(
+                                      onTap: () {
+                                        setCurrentPage(2);
+                                        setLoading(true);
+                                        Navigator.pop(context);
+                                        controller!.loadUrl(LoadUrlRequest("https://pallytopit.com.ng/explore/projects"));
+                                      },
+                                      child: const Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        child: Text("Explore Projects"),
+                                      ),
+                                    ),
+                                    // 16.toColumSpace(),
+                                  ],
+                                ),
+                              );
+                            }
+                          );
+                        },
+                        child: BottomNavItem(
+                          label: "Explore", icon: Icons.explore,
+                          isActive: currentPage == 2,
+                        ),
+                      ),
+
+                      // InkWell(
+                      //   onTap: () {
+                      //     setCurrentPage(3);
+                      //     // context.router.push(ChatBaseRoute());
+                      //   },
+                      //   child: BottomNavItem(
+                      //     label: "Alert", icon: Icons.mail_rounded,
+                      //     isActive: currentPage == 3,
+                      //   ),
+                      // ),
+                    ],
+                  ),
+                ),
+              )
             ],
           ),
         ),
@@ -221,6 +387,34 @@ class _AppScreenState extends State<AppScreen> {
     super.dispose();
   }
 }
+
+class BottomNavItem extends StatelessWidget {
+  const BottomNavItem({
+    super.key,
+    required this.label,
+    required this.icon,
+    this.isActive = false
+  });
+
+  final IconData icon;
+  final String label;
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, color: isActive ? Colors.white : primaryColor,),
+        4.toColumSpace(),
+        Text(label, style: TextStyle(
+          fontWeight: FontWeight.w700,
+          color: isActive ? Colors.white : primaryColor,
+        ),)
+      ],
+    );
+  }
+}
+
 
 class BrowserLoading extends StatelessWidget {
   const BrowserLoading({
