@@ -19,7 +19,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fl_webview/fl_webview.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 
 @RoutePage()
@@ -39,6 +40,8 @@ class _AppScreenState extends State<AppScreen> {
   bool _errorOccurred = false;
   String _errorMessage = "";
 
+  String _url = "";
+
   void setLoading(bool loading) {
     setState(() {
       _loading = loading;
@@ -57,6 +60,7 @@ class _AppScreenState extends State<AppScreen> {
 
   @override
   void initState() {
+    _url = widget.url;
     super.initState();
   }
 
@@ -65,64 +69,75 @@ class _AppScreenState extends State<AppScreen> {
     // print("Listening for URL Change ::: ");
     
     print("url ::: $url");
-    if (url.contains("/auth/login")) {
-      getIt<ILocalStorageService>().removeItem(userDataBox, userTokenKey).then((value) {
-        getIt<AppRouter>().replaceAll([const LoginRoute()]);
+    if (url.startsWith("https://pallytopit.com.ng")) {
+      setState(() {
+        _url = url;
       });
-      return false;
-    }
-    if (url.contains("/inbox")) {
-      final seperate = url.split("/");
-      if (seperate.last == "inbox") {
-        getIt<AppRouter>().push(const ChatBaseRoute());
-      } else {
-        getIt<AppRouter>().push(ChatBaseRoute(
-          children: [
-            const ChatListRoute(),
-            ChatMessageBaseRoute(userId: seperate.last)
-          ]
-        ));
+      if (url.contains("/auth/login")) {
+        getIt<ILocalStorageService>().removeItem(userDataBox, userTokenKey).then((value) {
+          getIt<AppRouter>().replaceAll([const LoginRoute()]);
+        });
+        return false;
       }
-      setLoading(false);
-      return false;
-    }
-
-    if (url.contains("/auth/register")) {
-      getIt<ILocalStorageService>().removeItem(userDataBox, userTokenKey).then((value) {
-        getIt<AppRouter>().replaceAll([const RegisterRoute()]);
-        // NavigationDecision.prevent;
-      });
-      return false;
-    }
-
-    if (url.contains("/auth/logout")) {
-      controller!.clearCache();
-      // controller
-      controller!.evaluateJavascript("""(function () {
-    var cookies = document.cookie.split("; ");
-    for (var c = 0; c < cookies.length; c++) {
-        var d = window.location.hostname.split(".");
-        while (d.length > 0) {
-            var cookieBase = encodeURIComponent(cookies[c].split(";")[0].split("=")[0]) + '=; expires=Thu, 01-Jan-1970 00:00:01 GMT; domain=' + d.join('.') + ' ;path=';
-            var p = location.pathname.split('/');
-            document.cookie = cookieBase + '/';
-            while (p.length > 0) {
-                document.cookie = cookieBase + p.join('/');
-                p.pop();
-            };
-            d.shift();
+      if (url.contains("/inbox")) {
+        final seperate = url.split("/");
+        if (seperate.last == "inbox") {
+          getIt<AppRouter>().push(const ChatBaseRoute());
+        } else {
+          getIt<AppRouter>().push(ChatBaseRoute(
+            children: [
+              const ChatListRoute(),
+              ChatMessageBaseRoute(userId: seperate.last)
+            ]
+          ));
         }
-    }
-})()""").then((value) {
-            getIt<ILocalStorageService>().removeItem(userDataBox, userTokenKey).then((value) {
-              getIt<AppRouter>().replaceAll([const LoginRoute()]);
-              // NavigationDecision.prevent;
-            });
-      });
+        setLoading(false);
+        return false;
+      }
+
+      if (url.contains("/auth/register")) {
+        getIt<ILocalStorageService>().removeItem(userDataBox, userTokenKey).then((value) {
+          getIt<AppRouter>().replaceAll([const RegisterRoute()]);
+          // NavigationDecision.prevent;
+        });
+        return false;
+      }
+
+      if (url.contains("/auth/logout")) {
+        controller!.clearCache();
+        // controller
+        controller!.evaluateJavascript("""(function () {
+      var cookies = document.cookie.split("; ");
+      for (var c = 0; c < cookies.length; c++) {
+          var d = window.location.hostname.split(".");
+          while (d.length > 0) {
+              var cookieBase = encodeURIComponent(cookies[c].split(";")[0].split("=")[0]) + '=; expires=Thu, 01-Jan-1970 00:00:01 GMT; domain=' + d.join('.') + ' ;path=';
+              var p = location.pathname.split('/');
+              document.cookie = cookieBase + '/';
+              while (p.length > 0) {
+                  document.cookie = cookieBase + p.join('/');
+                  p.pop();
+              };
+              d.shift();
+          }
+      }
+  })()""").then((value) {
+              getIt<ILocalStorageService>().removeItem(userDataBox, userTokenKey).then((value) {
+                getIt<AppRouter>().replaceAll([const LoginRoute()]);
+                // NavigationDecision.prevent;
+              });
+        });
+      }
       
-      return false;
+      return true;
     }
-    return true;
+    // print(url);
+    // if (url.startsWith("https://api.whatsapp.com/send")) {
+
+    // }
+    // print("NoMatchFound ::: $url");
+    launchUrl(Uri.parse(url), mode: LaunchMode.externalNonBrowserApplication).then((value) => setLoading(false));
+    return false;
   }
 
   void _wrapTryCatch(Function function) {
@@ -144,7 +159,7 @@ class _AppScreenState extends State<AppScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // print("Loading $_loading");
+    print("CurrentUrl $_url");
     return Scaffold(
       backgroundColor: Colors.white,
       body: WillPopScope(
@@ -175,75 +190,83 @@ class _AppScreenState extends State<AppScreen> {
         child: SafeArea(
           child: Stack(
             children: [
-              FlWebView(
-                // progressBar: FlProgressBar(
-                //   color: Colors.red,
-                //   height: 10
-                // ),
-                webSettings: WebSettings(
-                  javascriptMode: JavascriptMode.unrestricted,
-                  allowsAutoMediaPlayback: true,
-                  allowsInlineMediaPlayback: true,
-                ),
-                load: LoadUrlRequest(widget.url),
+              Positioned.fill(
+                top: 0, left: 0, right: 0,
+                bottom: 0,
+                child: FlWebView(
+                  // progressBar: FlProgressBar(
+                  //   color: Colors.red,
+                  //   height: 10
+                  // ),
+                  webSettings: WebSettings(
+                    javascriptMode: JavascriptMode.unrestricted,
+                    allowsAutoMediaPlayback: true,
+                    allowsInlineMediaPlayback: true,
+                    enabledDebugging: true,
+                  ),
+                  load: LoadUrlRequest(widget.url, headers: {
+                    '': ''
+                  }),
+                  
+                  delegate: FlWebViewDelegate(
+                    onPageStarted: (controller, url) {
+                      setLoading(true);
+                      _wrapTryCatch(() => _listenToUrlChanges(url!));
+                    },
+                    onProgress: (controller, progress) {
+                      setLoading(progress != 100);
+                    },
+                    onPageFinished: (controller, url) => setLoading(false),
+                    onShowFileChooser: (controller, params) async {
+                      print('onShowFileChooser : ${params.toMap()}');
                 
-                delegate: FlWebViewDelegate(
-                  onPageStarted: (controller, url) {
-                    setLoading(true);
-                    _wrapTryCatch(() => _listenToUrlChanges(url!));
+                      /// Select file
+                      FileType fileType = FileType.any;
+                      if (params.acceptTypes.toString().contains('image')) {
+                        fileType = FileType.image;
+                      }
+                      if (params.acceptTypes.toString().contains('video')) {
+                        fileType = FileType.video;
+                      }
+                      if (params.acceptTypes.toString().contains('file')) {
+                        fileType = FileType.any;
+                      }
+                      FilePickerResult? result = await FilePicker.platform.pickFiles(
+                        type: fileType,
+                        allowMultiple: params.mode == FileChooserMode.openMultiple
+                      );
+                      final list = result?.files.where((item) => item.path != null).map((item) => item.path!).toList();
+                      return list ?? [];
+                    },
+                    onUrlChanged: (controller, url) => _listenToUrlChanges(url!),
+                    onNavigationRequest: (controller, request) => _listenToUrlChanges(request.url),
+                    onWebResourceError: (controller, error) {
+                      setErrorMessage(true, error.description);
+                    },
+                    onPermissionRequest: (_, resources) {
+                      // controller.applyWebSettings
+                      // print("Resource Requested ::: $resources");
+                      // Permission.microphone.request();
+                      return true;
+                    },
+                    onPermissionRequestCanceled: (_, resources) {
+                      print("CancelledPermission ::: $resources");
+                    },
+                  ),
+                  onWebViewCreated: (ctr) async {
+                    // String userAgentString = 'userAgentString';
+                    // final value = await ctr.getNavigatorUserAgent();
+                    // print('navigator.userAgent :  $value');
+                    // userAgentString = '$value = $userAgentString';
+                    // final userAgent = await ctr.setUserAgent(userAgentString);
+                    // print('set userAgent:  $userAgent');
+                    // onWebViewCreated?.call(controller);
+                    setState(() {
+                      controller = ctr;
+                    });
                   },
-                  onProgress: (controller, progress) {
-                    setLoading(progress != 100);
-                  },
-                  onPageFinished: (controller, url) => setLoading(false),
-                  onShowFileChooser: (controller, params) async {
-                    print('onShowFileChooser : ${params.toMap()}');
-
-                    /// Select file
-                    FileType fileType = FileType.any;
-                    if (params.acceptTypes.toString().contains('image')) {
-                      fileType = FileType.image;
-                    }
-                    if (params.acceptTypes.toString().contains('video')) {
-                      fileType = FileType.video;
-                    }
-                    if (params.acceptTypes.toString().contains('file')) {
-                      fileType = FileType.any;
-                    }
-                    FilePickerResult? result = await FilePicker.platform.pickFiles(
-                      type: fileType,
-                      allowMultiple: params.mode == FileChooserMode.openMultiple
-                    );
-                    final list = result?.files.where((item) => item.path != null).map((item) => item.path!).toList();
-                    return list ?? [];
-                  },
-                  onUrlChanged: (controller, url) => _listenToUrlChanges(url!),
-                  onNavigationRequest: (controller, request) => _listenToUrlChanges(request.url),
-                  onWebResourceError: (controller, error) {
-                    setErrorMessage(true, error.description);
-                  },
-                  onPermissionRequest: (_, resources) {
-                    // controller.applyWebSettings
-                    // print("Resource Requested ::: $resources");
-                    // Permission.microphone.request();
-                    return true;
-                  },
-                  onPermissionRequestCanceled: (_, resources) {
-                    print("CancelledPermission ::: $resources");
-                  },
+                  
                 ),
-                onWebViewCreated: (ctr) async {
-                  String userAgentString = 'userAgentString';
-                  final value = await ctr.getNavigatorUserAgent();
-                  // print('navigator.userAgent :  $value');
-                  userAgentString = '$value = $userAgentString';
-                  final userAgent = await ctr.setUserAgent(userAgentString);
-                  // print('set userAgent:  $userAgent');
-                  // onWebViewCreated?.call(controller);
-                  setState(() {
-                    controller = ctr;
-                  });
-                },
               ),
               if (_loading)
                 const Positioned(
@@ -266,13 +289,13 @@ class _AppScreenState extends State<AppScreen> {
 
               Positioned(
                 left: 0, right: 0, bottom: 0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(.5),
-                    borderRadius: BorderRadius.circular(16)
+                child: (_url.isHomePage()) ? Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    // borderRadius: BorderRadius.circular(16)
                   ),
                   padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  // margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
@@ -283,7 +306,8 @@ class _AppScreenState extends State<AppScreen> {
                           controller!.loadUrl(LoadUrlRequest("$appUrl?token=$token&hst_footer=false"));
                         },
                         child: BottomNavItem(
-                          label: "Home", icon: Icons.home,
+                          label: "Home", 
+                          icon: Assets.svgs.homeIcon.path,
                           isActive: currentPage == 0,
                         ),
                       ),
@@ -292,7 +316,8 @@ class _AppScreenState extends State<AppScreen> {
                           context.router.push(ChatBaseRoute());
                         },
                         child: BottomNavItem(
-                          label: "Inbox", icon: Icons.mail_rounded
+                          label: "Inbox", 
+                          icon: Assets.svgs.messageIcon.path
                         ),
                       ),
                       InkWell(
@@ -355,7 +380,8 @@ class _AppScreenState extends State<AppScreen> {
                           );
                         },
                         child: BottomNavItem(
-                          label: "Explore", icon: Icons.explore,
+                          label: "Explore", 
+                          icon: Assets.svgs.exploreIcon.path,
                           isActive: currentPage == 2,
                         ),
                       ),
@@ -372,7 +398,7 @@ class _AppScreenState extends State<AppScreen> {
                       // ),
                     ],
                   ),
-                ),
+                ) : Container(),
               )
             ],
           ),
@@ -396,7 +422,7 @@ class BottomNavItem extends StatelessWidget {
     this.isActive = false
   });
 
-  final IconData icon;
+  final String icon;
   final String label;
   final bool isActive;
 
@@ -404,11 +430,13 @@ class BottomNavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, color: isActive ? Colors.white : primaryColor,),
+        // Icon(icon, color: isActive ? Colors.white : primaryColor,),
+        SvgPicture.asset(icon, color: isActive ? primary : null,),
         4.toColumSpace(),
         Text(label, style: TextStyle(
           fontWeight: FontWeight.w700,
-          color: isActive ? Colors.white : primaryColor,
+          color: isActive ? primary : Color(0xFF94A3B8),
+          fontSize: 10.sp
         ),)
       ],
     );

@@ -39,6 +39,13 @@ class $AssetsSvgsGen {
   SvgGenImage get emailAddressIcon =>
       const SvgGenImage('assets/svgs/email_address_icon.svg');
 
+  /// File path: assets/svgs/explore_icon.svg
+  SvgGenImage get exploreIcon =>
+      const SvgGenImage('assets/svgs/explore_icon.svg');
+
+  /// File path: assets/svgs/home_icon.svg
+  SvgGenImage get homeIcon => const SvgGenImage('assets/svgs/home_icon.svg');
+
   /// File path: assets/svgs/loader.svg
   SvgGenImage get loader => const SvgGenImage('assets/svgs/loader.svg');
 
@@ -48,6 +55,10 @@ class $AssetsSvgsGen {
 
   /// File path: assets/svgs/logo.svg
   SvgGenImage get logo => const SvgGenImage('assets/svgs/logo.svg');
+
+  /// File path: assets/svgs/message_icon.svg
+  SvgGenImage get messageIcon =>
+      const SvgGenImage('assets/svgs/message_icon.svg');
 
   /// File path: assets/svgs/name_icon.svg
   SvgGenImage get nameIcon => const SvgGenImage('assets/svgs/name_icon.svg');
@@ -69,9 +80,12 @@ class $AssetsSvgsGen {
         backIcon,
         dontHaveAnAccount,
         emailAddressIcon,
+        exploreIcon,
+        homeIcon,
         loader,
         loginWithGoogle,
         logo,
+        messageIcon,
         nameIcon,
         or,
         passwordIcon,

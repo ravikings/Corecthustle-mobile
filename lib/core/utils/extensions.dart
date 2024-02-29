@@ -19,4 +19,8 @@ extension StringExtension on String {
   String firstToUpper() {
     return "${split('').first.toUpperCase()}${substring(1)}";
   }
+  bool isHomePage() {
+    final url = Uri.parse(this);
+    return url.pathSegments.isEmpty;
+  }
 }

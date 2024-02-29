@@ -6,36 +6,52 @@ import 'package:correct_hustle/core/routes/routes.dart';
 import 'package:correct_hustle/core/routes/routes.gr.dart';
 import 'package:correct_hustle/core/services/local_storage/i_local_storage_service.dart';
 import 'package:correct_hustle/core/utils/extensions.dart';
+import 'package:correct_hustle/core/utils/functions.dart';
 import 'package:correct_hustle/gen/assets.gen.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 @RoutePage()
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(Duration.zero, () {
+      navigate();
+    });
+  }
   void navigate() async {
-    _audioPermission();
-    final fcmToken = await FirebaseMessaging.instance.getToken();
-    print('FCM TOKEN ::: $fcmToken');
-    final firstTime = await getIt<ILocalStorageService>().getItem(appDataBox, firstTimeKey, defaultValue: true);
-    if (firstTime) {
-      getIt<AppRouter>().replace(const RegisterRoute());
-    } else {
-      final token = await getIt<ILocalStorageService>().getItem(userDataBox, userTokenKey, defaultValue: null);
-      if (token != null) {
-        getIt<AppRouter>().replace(AppBaseRoute(
-          children: [
-            AppRoute(url: "$appUrl?token=$token&hst_footer=false")
-            // ChatBaseRoute()
-          ]
-        ));
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      print('FCM TOKEN ::: $fcmToken');
+      final firstTime = await getIt<ILocalStorageService>().getItem(appDataBox, firstTimeKey, defaultValue: true);
+      if (firstTime) {
+        await getIt<ILocalStorageService>().setItem(appDataBox, firstTimeKey, false);
+        getIt<AppRouter>().replace(const RegisterRoute());
       } else {
-        getIt<AppRouter>().replace(const LoginRoute());
+        final token = await getIt<ILocalStorageService>().getItem(userDataBox, userTokenKey, defaultValue: null);
+        if (token != null) {
+          getIt<AppRouter>().replace(AppBaseRoute(
+            children: [
+              AppRoute(url: "$appUrl?token=$token&hst_footer=false")
+            ]
+          ));
+        } else {
+          getIt<AppRouter>().replace(const LoginRoute());
+        }
       }
+    } catch (error) {
+      getIt<AppRouter>().replace(const RegisterRoute());
     }
   }
 
@@ -45,7 +61,6 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    navigate();
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(

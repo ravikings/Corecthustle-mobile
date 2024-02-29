@@ -15,7 +15,9 @@ import 'package:provider/provider.dart';
 
 @RoutePage()
 class ChatListScreen extends StatefulWidget {
-  const ChatListScreen({super.key});
+  const ChatListScreen({
+    super.key
+  });
 
   @override
   State<ChatListScreen> createState() => _ChatListScreenState();
@@ -32,7 +34,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: Color(0xFF1F47F5),
             ),
             padding: EdgeInsets.fromLTRB(16, 55, 16, 15),

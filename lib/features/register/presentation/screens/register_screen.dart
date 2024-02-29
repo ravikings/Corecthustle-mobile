@@ -76,37 +76,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         "password": passwordController.text
       });
       ToastAlert.closeAlert();
-      // ToastAlert.showAlert("Registration successful");
-
-
-      // String? fcmToken = await getIt<ILocalStorageService>().getItem(appDataBox, pushNotificationKey, defaultValue: null);
-      // fcmToken ??= await FirebaseMessaging.instance.getToken();
-
-      final token = res.data['data']['token'];
-      
-      // await getIt<Dio>().put("user/update-fcm", data: {
-      //   "token": fcmToken
-      // }, options: Options(
-      //   headers: {
-      //     "authorization": "Bearer $token"
-      //   }
-      // )).catchError((err) {
-      //   print(err);
-      // });
-
-
       // // print(token);
-      // await getIt<ILocalStorageService>().setItem(appDataBox, firstTimeKey, false);
+      await getIt<ILocalStorageService>().setItem(appDataBox, firstTimeKey, false);
       // await getIt<ILocalStorageService>().setItem(userDataBox, userTokenKey, token);
 
       showSuccessAlert(context, message: "Registration successful", onOkay: () {
         // getIt<AppRouter>().replaceAll([AppRoute(url: "http://pallytopit.com.ng?token=$token&hst_footer=false")]);
         getIt<AppRouter>().replace(VerifyAccountRoute(
-          email: emailController.text,
-          token: token
+          email: emailController.text
         ));
       });
-      
 
     } on DioException catch (e) {
       ToastAlert.closeAlert();

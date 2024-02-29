@@ -1,6 +1,7 @@
 
 import 'package:auto_route/auto_route.dart';
 import 'package:correct_hustle/core/constants/constants.dart';
+import 'package:correct_hustle/core/data/models/user_model.dart';
 import 'package:correct_hustle/core/interactions/alert.dart';
 import 'package:correct_hustle/core/locator.dart';
 import 'package:correct_hustle/core/routes/routes.dart';
@@ -15,12 +16,15 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+const loginVerificationPurpose = "login";
+const registerVerificationPurpose = "registration";
+
 @RoutePage()
 class VerifyAccountScreen extends StatefulWidget {
-  const VerifyAccountScreen({super.key, required this.email, required this.token});
+  const VerifyAccountScreen({super.key, required this.email, this.purpose = registerVerificationPurpose});
 
   final String email;
-  final String token;
+  final String purpose;
 
   @override
   State<VerifyAccountScreen> createState() => _VerifyAccountScreenState();
@@ -38,7 +42,15 @@ class _VerifyAccountScreenState extends State<VerifyAccountScreen> {
 
   final tokenController = TextEditingController();
 
-  void verifyAccount(BuildContext context) async {
+  void verify(BuildContext context) {
+    if (widget.purpose == loginVerificationPurpose) {
+      _verifyLogin(context);
+    } else {
+      _verifyAccount(context);
+    }
+  }
+
+  void _verifyAccount(BuildContext context) async {
     try {
       
       if (tokenController.text.isEmpty) {
@@ -60,7 +72,68 @@ class _VerifyAccountScreenState extends State<VerifyAccountScreen> {
 
       showSuccessAlert(context, message: "Account verified successfully", onOkay: () {
         getIt<AppRouter>().replaceAll([LoginRoute()]);
-        // getIt<AppRouter>().replaceAll([AppRoute(url: "http://pallytopit.com.ng?token=${widget.token}&hst_footer=false")]);
+      });
+
+      // print(token);
+    } on DioException catch (e) {
+      ToastAlert.closeAlert();
+      if (e.type == DioExceptionType.unknown) {
+        showErrorAlert(context, message: "Internet error occurred");
+        return;
+      }
+      // ToastAlert.showErrorAlert("${e.response!.data['message']}");
+      showErrorAlert(context, message: "${e.response!.data['message']}");
+      // print("${e.response.toString()}");
+    } catch (error) {
+      ToastAlert.closeAlert();
+      // ToastAlert.showErrorAlert("Something went wrong");
+      showErrorAlert(context, message: "Unable to login, please try again.");
+      
+      rethrow;
+    }
+  }
+  void _verifyLogin(BuildContext context) async {
+    try {
+      
+      if (tokenController.text.isEmpty) {
+        showErrorAlert(context, message: "Please provide the token sent to your email address");
+        return;
+      }
+      ToastAlert.showLoadingAlert("");
+      final deviceId = await getDeviceId();
+      String? fcmToken = await getIt<ILocalStorageService>().getItem(appDataBox, pushNotificationKey, defaultValue: null);
+      fcmToken ??= await FirebaseMessaging.instance.getToken();
+      final res = await getIt<Dio>().post("verify-token", data: {
+        "email": widget.email,
+        "token": tokenController.text,
+      }, options: Options(
+        headers: {
+          "x-deviceid": deviceId
+        }
+      ));
+
+      print("VerifyLogin ::: Response ::: ${res.data}");
+      final token = res.data['data']['token'];
+
+      await getIt<Dio>().put("user/update-fcm", data: {
+        "token": fcmToken
+      }, options: Options(
+        headers: {
+          "authorization": "Bearer $token"
+        }
+      ));
+
+      
+
+      ToastAlert.closeAlert();
+      // ToastAlert.showAlert("Login successful");
+
+      showSuccessAlert(context, message: "Login verified successfully", onOkay: () async {
+        final user = UserModel.fromJson(res.data['data']['user']);
+        await getIt<ILocalStorageService>().setItem(userDataBox, userTokenKey, token);
+        await getIt<ILocalStorageService>().setItem(userDataBox, userIDKey, user.id);
+        
+        getIt<AppRouter>().replaceAll([AppRoute(url: "http://pallytopit.com.ng?token=$token&hst_footer=false")]);
       });
 
       // print(token);
@@ -134,7 +207,13 @@ class _VerifyAccountScreenState extends State<VerifyAccountScreen> {
             child: Row(
               children: [
                 GestureDetector(
-                  onTap: () => getIt<AppRouter>().replace(const RegisterRoute()),
+                  onTap: () {
+                    if (widget.purpose == loginVerificationPurpose) {
+                      getIt<AppRouter>().replace(const LoginRoute());
+                    } else {
+                      getIt<AppRouter>().replace(const RegisterRoute());
+                    }
+                  },
                   child: Assets.svgs.backIcon.svg()
                 ),
 
@@ -165,7 +244,7 @@ class _VerifyAccountScreenState extends State<VerifyAccountScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text("Verify Account", style: TextStyle(
+                    Text(widget.purpose == loginVerificationPurpose ? "Verify Login" : "Verify Account", style: TextStyle(
                       fontSize: 25.sp, fontWeight: FontWeight.w700,
                       color: const Color(0xFF0F172A)
                     ),),
@@ -193,17 +272,21 @@ class _VerifyAccountScreenState extends State<VerifyAccountScreen> {
                             keyboardType: TextInputType.number,
                           ),
 
-                          10.toColumSpace(),
+                          if (widget.purpose != loginVerificationPurpose) ...[
+                            10.toColumSpace(),
 
-                          InkWell(
-                            onTap: () => resendOtp(context),
-                            child: const Text("Resend OTP")
-                          ),
+                            InkWell(
+                              onTap: () => resendOtp(context),
+                              child: const Text("Resend OTP")
+                            ),
+                          ],
                           
                           41.toColumSpace(),
             
                           ElevatedButton(
-                            onPressed: () => verifyAccount(context),
+                            onPressed: () {
+                              verify(context);
+                            },
                             style: ButtonStyle(
                               backgroundColor: MaterialStateProperty.all(const Color(0xFF2D55F9)),
                               shape: MaterialStateProperty.all(RoundedRectangleBorder(

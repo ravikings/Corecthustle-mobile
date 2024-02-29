@@ -1,6 +1,8 @@
 
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:io';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:correct_hustle/core/constants/constants.dart';
 import 'package:correct_hustle/core/data/models/user_model.dart';
@@ -13,7 +15,9 @@ import 'package:correct_hustle/core/state/user_profile_provider.dart';
 import 'package:correct_hustle/core/styles/input_style.dart';
 import 'package:correct_hustle/core/utils/extensions.dart';
 import 'package:correct_hustle/core/utils/functions.dart';
+import 'package:correct_hustle/features/verify_account_screen/verify_account_screen.dart';
 import 'package:correct_hustle/gen/assets.gen.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
 
   bool _passwordIsVisible = false;
+  bool _loginWithOtp = false;
 
   void _togglePasswordVisiblity() {
     _passwordIsVisible = !_passwordIsVisible;
@@ -55,26 +60,37 @@ class _LoginScreenState extends State<LoginScreen> {
       ToastAlert.showLoadingAlert("");
       String? fcmToken = await getIt<ILocalStorageService>().getItem(appDataBox, pushNotificationKey, defaultValue: null);
       fcmToken ??= await FirebaseMessaging.instance.getToken();
+
+      final deviceId = await getDeviceId();
+
       final res = await getIt<Dio>().post("login", data: {
         "email": emailController.text,
         "password": passwordController.text,
         "fcm_token": fcmToken
-      });
-      
-      final token = res.data['data']['token'];
-
-      print(res.data['data']['user']);
-
-      await getIt<Dio>().put("user/update-fcm", data: {
-        "token": fcmToken
       }, options: Options(
         headers: {
-          "authorization": "Bearer $token"
+          "X-deviceid": deviceId
         }
       ));
 
+      final requiresToken = res.data['data']['requiresToken'] ?? false;
+      final token = res.data['data']['token'];
+
+      if (requiresToken == false) {
+        await getIt<Dio>().put("user/update-fcm", data: {
+          "token": fcmToken
+        }, options: Options(
+          headers: {
+            "authorization": "Bearer $token"
+          }
+        ));
+      }
+
+
       ToastAlert.closeAlert();
       // ToastAlert.showAlert("Login successful");
+      // print(res.data);
+      
       final emailVerified = res.data['data']['user']['email_verified_at'] != null;
 
       if (emailVerified) {
@@ -82,18 +98,71 @@ class _LoginScreenState extends State<LoginScreen> {
         await getIt<ILocalStorageService>().setItem(userDataBox, userTokenKey, token);
         await getIt<ILocalStorageService>().setItem(userDataBox, userIDKey, user.id);
 
-        showSuccessAlert(context, message: "Login Successful.", onOkay: () {
-          getIt<AppRouter>().replace(AppRoute(url: "$appUrl?token=$token&hst_footer=false"));
-        });
+        if (requiresToken) {
+          showSuccessAlert(context, message: "Please verify your login.", onOkay: () {
+            // getIt<AppRouter>().replace(AppRoute(url: "$appUrl?token=$token&hst_footer=false"));
+            getIt<AppRouter>().push(VerifyAccountRoute(email: emailController.text, purpose: loginVerificationPurpose));
+          });
+        }
+        if (!requiresToken) {
+          showSuccessAlert(context, message: "Login successful", onOkay: () {
+            getIt<AppRouter>().replace(AppRoute(url: "$appUrl?token=$token&hst_footer=false"));
+          });
+        }
       } else {
         showSuccessAlert(context, message: "Please verify your account to continue.", onOkay: () {
-          getIt<AppRouter>().replace(VerifyAccountRoute(email: emailController.text, token: token));
+          getIt<AppRouter>().replace(VerifyAccountRoute(email: emailController.text));
         });
       }
-
-
-      // print(token);
     } on DioException catch (e) {
+      // print(e);
+      ToastAlert.closeAlert();
+      if (e.type == DioExceptionType.unknown) {
+        showErrorAlert(context, message: "Internet error occurred");
+        return;
+      }
+      setState(() {
+        _loginWithOtp = true;
+      });
+      // ToastAlert.showErrorAlert("${e.response!.data['message']}");
+      showErrorAlert(context, message: "${e.response!.data['message']}");
+      // print("${e.response.toString()}");
+    } catch (error) {
+      ToastAlert.closeAlert();
+      // ToastAlert.showErrorAlert("Something went wrong");
+      showErrorAlert(context, message: "Unable to login, please try again.");
+      
+      rethrow;
+    }
+  }
+  void loginWithOtp(BuildContext context) async {
+    try {
+      if (emailController.text.isEmpty) {
+        showErrorAlert(context, message: "Email is required");
+        return;
+      }
+      ToastAlert.showLoadingAlert("");
+
+      final deviceId = await getDeviceId();
+
+      final res = await getIt<Dio>().post("login-token", data: {
+        "email": emailController.text
+      }, options: Options(
+        headers: {
+          "X-deviceid": deviceId
+        }
+      ));
+
+      ToastAlert.closeAlert();
+      // ToastAlert.showAlert("Login successful");
+      print(res.data);
+      
+      showSuccessAlert(context, message: "Please verify your login.", onOkay: () {
+        // getIt<AppRouter>().replace(AppRoute(url: "$appUrl?token=$token&hst_footer=false"));
+        getIt<AppRouter>().push(VerifyAccountRoute(email: emailController.text, purpose: loginVerificationPurpose));
+      });
+    } on DioException catch (e) {
+      print(e);
       ToastAlert.closeAlert();
       if (e.type == DioExceptionType.unknown) {
         showErrorAlert(context, message: "Internet error occurred");
@@ -177,7 +246,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               hintText: "Enter email address"
                             ),
-                            controller: emailController
+                            controller: emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            
                           ),
                           15.toColumSpace(),
                           TextFormField(
@@ -198,16 +269,26 @@ class _LoginScreenState extends State<LoginScreen> {
                             controller: passwordController
                           ),
                           10.toColumSpace(),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: InkWell(
-                              onTap: () {
-                                context.router.push(AppRoute(url: "$appUrl/auth/password/reset?from_app=true", canExitFreely: true));
-                              },
-                              child: const Text("Forgot password", style: TextStyle(
-                                color: Color(0xFF2D55F9)
-                              ),),
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              InkWell(
+                                onTap: () {
+                                  context.router.push(AppRoute(url: "$appUrl/auth/password/reset?from_app=true", canExitFreely: true));
+                                },
+                                child: const Text("Forgot password", style: TextStyle(
+                                  color: Color(0xFF2D55F9)
+                                ),),
+                              ),
+                              if (_loginWithOtp) ...[
+                                InkWell(
+                                  onTap: () => loginWithOtp(context),
+                                  child: const Text("Login With Otp", style: TextStyle(
+                                    color: Color(0xFF2D55F9)
+                                  ),),
+                                )
+                              ],
+                            ],
                           ),
                           41.toColumSpace(),
             

@@ -36,10 +36,7 @@ void main() async {
   );
   await getIt<ILocalStorageService>().init();
 
-  Permission.camera.request();
-  Permission.microphone.request();
-  Permission.storage.request();
-
+  [Permission.camera, Permission.microphone, Permission.storage].request();
   
   FirebaseMessaging messaging = FirebaseMessaging.instance;
 

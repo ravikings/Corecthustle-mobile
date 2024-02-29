@@ -50,16 +50,17 @@ class _ChatOfferWidgetState extends State<ChatOfferWidget> {
   void loadOffer() async {
     try {
       final token = await getIt<ILocalStorageService>().getItem(userDataBox, userTokenKey, defaultValue: null);
-      print("Quote ::: ");
-      final res = await getIt<Dio>().post("$appBaseUrl/offer-info", data: {
-        "offerId": widget.quotationId
-      }, options: Options(
+      // print("Token ::: $token");
+      final url = "${appBaseUrl}offer-info?offerId=${widget.quotationId}";
+      // print("Offer ::: Url ::: $url");
+      final res = await getIt<Dio>().get(url, options: Options(
         headers: {
           "Authorization": "Bearer $token",
-          "X-Csrf-Token": "0QET8gXARhz2Ub49PlvmAwEP7pVEab3vhjPhnxnn"
+          "Content-Type": "application/json",
+          "Accept": "application/json"
         }
       ));
-      print("Offer ::: ${res.data}");
+      print("Offer ::: Response ::: ${res.data}");
       getIt<ILocalStorageService>().setItem(userDataBox, 'offer_${widget.quotationId}', res.data['data']);
       final offer = OfferModel.fromJson(res.data['data']);
       offerState.toSuccess(offer);
@@ -68,19 +69,20 @@ class _ChatOfferWidgetState extends State<ChatOfferWidget> {
     } on DioException catch (error) {
       offerState.toError('Error: ${error.response!.data}');
       setState(() {});
+      rethrow;
     } catch (error) {
       offerState.toError('Error: $error');
       setState(() {});
+      rethrow;
     }
   }
-
 
   void withdrawOffer(String offerId) async {
     try {
       ToastAlert.showLoadingAlert("");
       final token = await getIt<ILocalStorageService>().getItem(userDataBox, userTokenKey, defaultValue: null);
       print("Quote ::: ");
-      final res = await getIt<Dio>().post("$appBaseUrl/withdraw-offer", data: {
+      final res = await getIt<Dio>().post("${appBaseUrl}withdraw-offer", data: {
         "offerId": offerId
       }, options: Options(
         headers: {
@@ -105,12 +107,13 @@ class _ChatOfferWidgetState extends State<ChatOfferWidget> {
       ToastAlert.showErrorAlert('Error: $error');
     }
   }
+  
   Future<void> acceptOffer(String offerId) async {
     try {
       ToastAlert.showLoadingAlert("");
       final token = await getIt<ILocalStorageService>().getItem(userDataBox, userTokenKey, defaultValue: null);
       print("Quote ::: ");
-      final res = await getIt<Dio>().post("$appBaseUrl/eval-offer", data: {
+      final res = await getIt<Dio>().post("${appBaseUrl}eval-offer", data: {
         "offerId": offerId,
         "status": 'accepted'
       }, options: Options(
@@ -136,12 +139,13 @@ class _ChatOfferWidgetState extends State<ChatOfferWidget> {
       ToastAlert.showErrorAlert('Error: $error');
     }
   }
+  
   Future<void> rejectOffer(String offerId) async {
     try {
       ToastAlert.showLoadingAlert("");
       final token = await getIt<ILocalStorageService>().getItem(userDataBox, userTokenKey, defaultValue: null);
       print("Quote ::: ");
-      final res = await getIt<Dio>().post("$appBaseUrl/eval-offer", data: {
+      final res = await getIt<Dio>().post("${appBaseUrl}eval-offer", data: {
         "offerId": offerId,
         "status": 'rejected'
       }, options: Options(
@@ -174,8 +178,10 @@ class _ChatOfferWidgetState extends State<ChatOfferWidget> {
     loadFromCache();
     super.initState();
   }
+
   @override
   Widget build(BuildContext context) {
+    print("OfferId ::: ${widget.quotationId}");
     return Container(
       decoration: BoxDecoration(
         border: Border.all(
@@ -215,10 +221,10 @@ class _ChatOfferWidgetState extends State<ChatOfferWidget> {
               const Divider(height: .1, thickness: .4,),
           
               Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.white
                 ),
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -255,7 +261,7 @@ class _ChatOfferWidgetState extends State<ChatOfferWidget> {
                               elevation: MaterialStateProperty.all(0),
                               padding: MaterialStateProperty.all(EdgeInsets.symmetric(horizontal: 16, vertical: 0))
                             ),
-                            child: Text("Witdraw Offer", style: TextStyle(
+                            child: const Text("Witdraw Offer", style: TextStyle(
                               color: Colors.white
                             ),),
                           )
